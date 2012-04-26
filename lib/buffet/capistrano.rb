@@ -7,17 +7,20 @@ Capistrano::Configuration.instance(true).load do
     set :stage, "_buffet" if ARGV.all? { |arg| arg.start_with?("buffet:") }
   end
 
-  task :install_rvm, :roles => :install_rvm do
-    run "echo Install rvm: `hostname`", shell: rvm_install_shell
-    find_and_execute_task "rvm:install_rvm"
-  end
-
-  task :install_ruby, :roles => :install_ruby do
-    run "echo Install ruby: `hostname`", shell: rvm_install_shell
-    find_and_execute_task "rvm:install_ruby"
-  end
-
   namespace :buffet do
+    def run_when(command, role, opts = {})
+      servers = []
+      run(command, opts) do |channel, _, data|
+        servers << "#{channel[:server].user}@#{channel[:host]}" if data.chomp == "0"
+      end
+      unless servers.empty?
+        servers.each { |s| server s, role }
+        with_env "ROLES", role.to_s do
+          yield
+        end
+      end
+    end
+
     task :prepare do
       raise "buffet.yml was not found in current directory" unless File.exists?("buffet.yml")
 
@@ -28,27 +31,16 @@ Capistrano::Configuration.instance(true).load do
         server s.host, :buffet, :user => s.user
       end
 
+      run_when "if [ -d $HOME/.rvm ]; then echo 1; else echo 0; fi", :install_rvm, :roles => :buffet, :shell => rvm_install_shell do
+        rvm.install_rvm
+      end
+
       ruby_version, gem_set = rvm_ruby_string.split("@")
       gem_set &&= "@#{gem_set}"
-      ruby_version = ruby_version.gsub('.', "\\\\.")
-
-      need_install_rvm = false
-      run("if [ -d $HOME/.rvm ]; then echo 1; else echo 0; fi", :shell => rvm_install_shell) do |channel, _, data|
-        unless data.chomp == "1"
-          server channel[:host], :install_rvm, :user => channel[:user]
-          need_install_rvm = true
-        end
+      ruby_version = ruby_version.gsub('.', "\\.")
+      run_when "(rvm list gemsets | grep -e #{ruby_version}.*#{gem_set}) || echo 0", :install_ruby, :roles => :buffet do
+        install_ruby
       end
-      install_rvm if need_install_rvm
-
-      need_install_ruby = false
-      run("(rvm list gemsets | grep -e \"#{ruby_version}.*#{gem_set}\") || echo 0", :shell => rvm_install_shell) do |channel, _, data|
-        if data.chomp == "0"
-          need_install_ruby = true
-          server channel[:host], :install_ruby, :user => channel[:user]
-        end
-      end
-      install_ruby if need_install_ruby
     end
   end
 end
