@@ -21,20 +21,23 @@ Capistrano::Configuration.instance(true).load do
       end
     end
 
-    task :prepare do
+    task :load_config do
       raise "buffet.yml was not found in current directory" unless File.exists?("buffet.yml")
 
       Buffet::Settings.load_file("buffet.yml")
-
-      set :rvm_ruby_string, Buffet::Settings['rvm_ruby_string']
       Buffet::Settings.slaves.each do |s|
         server s.host, :buffet, :user => s.user
       end
+    end
 
+    task :install_rvm, :roles => :buffet do
       run_when "if [ -d $HOME/.rvm ]; then echo 1; else echo 0; fi", :install_rvm, :roles => :buffet, :shell => rvm_install_shell do
         rvm.install_rvm
       end
+    end
 
+    task :install_ruby, :roles => :buffet do
+      set :rvm_ruby_string, Buffet::Settings['rvm_ruby_string']
       ruby_version, gem_set = rvm_ruby_string.split("@")
       gem_set &&= "@#{gem_set}"
       ruby_version = ruby_version.gsub('.', "\\.")
@@ -42,5 +45,12 @@ Capistrano::Configuration.instance(true).load do
         install_ruby
       end
     end
+
+    task :prepare, :roles => :buffet do
+      install_rvm
+      install_ruby
+    end
+
+    before 'buffet:prepare', 'buffet:load_config'
   end
 end
