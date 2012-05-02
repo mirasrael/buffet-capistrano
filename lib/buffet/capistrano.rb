@@ -21,6 +21,14 @@ Capistrano::Configuration.instance(true).load do
       end
     end
 
+    task :upload_project, :roles => :buffet do
+      run "mkdir -p #{File.dirname(buffet_workspace_directory)}"
+      servers = find_servers_for_task current_task
+      servers.each do |server|
+        run_locally "rsync --exclude=.git --exclude=log -r --delete -L --safe-links ./ #{server}:/home/#{server.user || Capistrano::ServerDefinition.default_user}/#{buffet_workspace_directory}/"
+      end
+    end
+
     task :load_config do
       raise "buffet.yml was not found in current directory" unless File.exists?("buffet.yml")
 
@@ -28,6 +36,7 @@ Capistrano::Configuration.instance(true).load do
       Buffet::Settings.slaves.each do |s|
         server s.host, :buffet, :user => s.user
       end
+      set :buffet_workspace_directory, "#{Buffet::Settings.project.directory_on_slave}"
     end
 
     task :install_rvm, :roles => :buffet do
@@ -51,6 +60,6 @@ Capistrano::Configuration.instance(true).load do
       install_ruby
     end
 
-    before 'buffet:prepare', 'buffet:load_config'
+    before 'buffet:prepare', 'buffet:load_config', 'buffet:upload_project'
   end
 end
