@@ -8,14 +8,13 @@ Capistrano::Configuration.instance(true).load do
   end
 
   namespace :buffet do
-    def run_when(command, role, opts = {})
-      servers = []
+    def run_when(command, opts = {})
+      hosts = []
       run(command, opts) do |channel, _, data|
-        servers << "#{channel[:server].user}@#{channel[:host]}" if data.chomp == "0"
+        hosts << channel[:host] if data.chomp == "0"
       end
-      unless servers.empty?
-        servers.each { |s| server s, role }
-        with_env "ROLES", role.to_s do
+      unless hosts.empty?
+        with_env "HOSTS", hosts.join(',') do
           yield
         end
       end
@@ -40,7 +39,7 @@ Capistrano::Configuration.instance(true).load do
     end
 
     task :install_rvm, :roles => :buffet do
-      run_when "if [ -d $HOME/.rvm ]; then echo 1; else echo 0; fi", :install_rvm, :roles => :buffet, :shell => rvm_install_shell do
+      run_when "if [ -d $HOME/.rvm ]; then echo 1; else echo 0; fi", :roles => :buffet, :shell => rvm_install_shell do
         rvm.install_rvm
       end
     end
@@ -50,7 +49,7 @@ Capistrano::Configuration.instance(true).load do
       ruby_version, gem_set = rvm_ruby_string.split("@")
       gem_set &&= "@#{gem_set}"
       ruby_version = ruby_version.gsub('.', "\\.")
-      run_when "(rvm list gemsets | grep -e #{ruby_version}.*#{gem_set}) || echo 0", :install_ruby, :roles => :buffet do
+      run_when "(rvm list gemsets | grep -e #{ruby_version}.*#{gem_set}) || echo 0", :roles => :buffet do
         install_ruby
       end
     end
