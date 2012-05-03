@@ -24,7 +24,7 @@ Capistrano::Configuration.instance(true).load do
       run "mkdir -p #{File.dirname(buffet_workspace_directory)}"
       servers = find_servers_for_task current_task
       servers.each do |server|
-        run_locally "rsync --exclude=.git --exclude=log -r --delete -L --safe-links ./ #{server}:/home/#{server.user || Capistrano::ServerDefinition.default_user}/#{buffet_workspace_directory}/"
+        run_locally "rsync --exclude=log -r --delete -L --safe-links ./ #{server}:/home/#{server.user || Capistrano::ServerDefinition.default_user}/#{buffet_workspace_directory}/"
       end
     end
 
