@@ -49,8 +49,8 @@ Capistrano::Configuration.instance(true).load do
       ruby_version, gem_set = rvm_ruby_string.split("@")
       gem_set &&= "@#{gem_set}"
       ruby_version = ruby_version.gsub('.', "\\.")
-      run_when "(rvm list gemsets | grep -e #{ruby_version}.*#{gem_set}) || echo 0", :roles => :buffet do
-        install_ruby
+      run_when "(rvm list gemsets | grep -e #{ruby_version}.*#{gem_set}) || echo 0", :shell => rvm_install_shell, :roles => :buffet do
+        rvm.install_ruby
       end
     end
 
@@ -59,6 +59,7 @@ Capistrano::Configuration.instance(true).load do
       install_ruby
     end
 
-    before 'buffet:prepare', 'buffet:load_config', 'buffet:upload_project'
+    before 'buffet:prepare', 'buffet:load_config'
+    after 'buffet:prepare', 'buffet:upload_project'
   end
 end
