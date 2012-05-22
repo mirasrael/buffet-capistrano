@@ -3,6 +3,8 @@ require "rvm"
 require "rvm/capistrano"
 
 Capistrano::Configuration.instance(true).load do
+  _cset :rvm_install_ruby_params, ''
+
   before "multistage:ensure" do
     set :stage, "_buffet" if ARGV.all? { |arg| arg.start_with?("buffet:") }
   end
@@ -23,8 +25,12 @@ Capistrano::Configuration.instance(true).load do
     task :upload_project, :roles => :buffet do
       run "mkdir -p #{File.dirname(buffet_workspace_directory)}"
       servers = find_servers_for_task current_task
+      options = %w(-r --delete -L --safe-links)
+      if Buffet::Settings.has_exclude_filter_file?
+        options << "--exclude-from=#{Buffet::Settings.exclude_filter_file}"
+      end
       servers.each do |server|
-        run_locally "rsync --exclude=log -r --delete -L --safe-links ./ #{server}:/home/#{server.user || Capistrano::ServerDefinition.default_user}/#{buffet_workspace_directory}/"
+        run_locally "rsync #{options.join(' ')} ./ #{server}:/home/#{server.user || Capistrano::ServerDefinition.default_user}/#{buffet_workspace_directory}/"
       end
     end
 
