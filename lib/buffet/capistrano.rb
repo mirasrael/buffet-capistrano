@@ -37,7 +37,6 @@ Capistrano::Configuration.instance(true).load do
     task :load_config do
       raise "buffet.yml was not found in current directory" unless File.exists?("buffet.yml")
 
-      Buffet::Settings.load_file("buffet.yml")
       Buffet::Settings.slaves.each do |s|
         server s.host, :buffet, :user => s.user
       end

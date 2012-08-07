@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
   s.require_paths = ["lib"]
 
   s.add_dependency "capistrano"
-  s.add_dependency "buffet-gem"
+  s.add_dependency "buffet-gem", ">=1.2"
   s.add_dependency "rvm"
   s.add_dependency "rvm-capistrano"
 
